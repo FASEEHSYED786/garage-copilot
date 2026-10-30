@@ -123,3 +123,8 @@ def test_openai_tool_agent_runs_tool_loop(copilot):
     assert result.tools_used == ["mot_risk"] and result.steps[0].ok
     assert sent[0]["tools"][0]["type"] == "function"
     assert sent[1]["messages"][-1]["role"] == "tool"
+
+
+def test_tool_registry_survives_bad_llm_arguments(copilot):
+    result = copilot.tools.call("mot_risk", reg="AB19 CDE")  # wrong argument name
+    assert not result.ok and "error" in result.output

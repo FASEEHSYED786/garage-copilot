@@ -25,6 +25,8 @@ class Settings:
     dvsa_api_key: str | None = field(default=None, repr=False)
     dvsa_access_token: str | None = field(default=None, repr=False)
 
+    api_key: str | None = field(default=None, repr=False)
+
     knowledge_dir: Path = DATA_DIR / "knowledge"
     vehicles_file: Path = DATA_DIR / "vehicles.json"
     model_path: Path = Path(".garage_copilot") / "mot_risk.joblib"
@@ -40,6 +42,7 @@ class Settings:
             vehicle_source=env.get("GARAGE_VEHICLE_SOURCE", "mock").lower(),
             dvsa_api_key=env.get("DVSA_API_KEY"),
             dvsa_access_token=env.get("DVSA_ACCESS_TOKEN"),
+            api_key=env.get("GARAGE_API_KEY"),
             knowledge_dir=Path(env.get("GARAGE_KNOWLEDGE_DIR", DATA_DIR / "knowledge")),
             model_path=Path(
                 env.get("GARAGE_MODEL_PATH", Path(".garage_copilot") / "mot_risk.joblib")

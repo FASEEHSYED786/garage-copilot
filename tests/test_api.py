@@ -48,3 +48,17 @@ def test_agent_endpoint(client):
 def test_fleet_availability(client):
     body = client.get("/fleet/availability", params={"day": "2026-11-02"}).json()
     assert len(body["available"]) == 3
+
+
+def test_bad_registration_is_400(client):
+    assert client.get("/vehicles/" + "A" * 20).status_code == 400
+
+
+def test_api_key_required_when_set(copilot):
+    from dataclasses import replace
+
+    copilot.settings = replace(copilot.settings, api_key="s3cret")
+    client = TestClient(create_app(copilot))
+    assert client.get("/health").status_code == 401
+    assert client.get("/health", headers={"X-API-Key": "wrong"}).status_code == 401
+    assert client.get("/health", headers={"X-API-Key": "s3cret"}).status_code == 200

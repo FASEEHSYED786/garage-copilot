@@ -63,7 +63,7 @@ class ToolRegistry:
             return ToolResult(name, args, False, {"error": f"Unknown tool {name}"})
         try:
             return ToolResult(name, args, True, self._tools[name].func(**args))
-        except (VehicleNotFoundError, ValueError) as exc:
+        except (VehicleNotFoundError, ValueError, TypeError) as exc:
             return ToolResult(name, args, False, {"error": str(exc)})
 
 

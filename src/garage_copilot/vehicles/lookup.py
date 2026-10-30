@@ -33,8 +33,8 @@ class VehicleNotFoundError(LookupError):
 def normalise_registration(raw: str) -> str:
     """Upper-case, strip spaces and punctuation, then format current-style plates as 'AB19 CDE'."""
     reg = _REG_CLEAN.sub("", raw.upper())
-    if not reg:
-        raise ValueError("Registration is empty")
+    if not 2 <= len(reg) <= 8:
+        raise ValueError("Not a valid UK registration")
     if len(reg) == 7 and reg[:2].isalpha() and reg[2:4].isdigit() and reg[4:].isalpha():
         return f"{reg[:4]} {reg[4:]}"
     return reg

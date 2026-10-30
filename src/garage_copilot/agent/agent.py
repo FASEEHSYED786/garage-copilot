@@ -210,7 +210,10 @@ class OpenAIToolAgent:
                 return AgentResponse(msg.get("content") or "", steps)
             messages.append(msg)
             for call in calls:
-                args = json.loads(call["function"]["arguments"] or "{}")
+                try:
+                    args = json.loads(call["function"]["arguments"] or "{}")
+                except json.JSONDecodeError:
+                    args = {}
                 result = self.tools.call(call["function"]["name"], **args)
                 steps.append(result)
                 messages.append(

@@ -101,16 +101,25 @@ With `openai` the agent switches to LLM tool calling, and RAG answers are writte
 | GET | `/health` | Status, provider, number of indexed chunks, model AUC |
 | GET | `/vehicles/{registration}` | Vehicle details and MOT history |
 | GET | `/vehicles/{registration}/mot-risk` | Failure probability, band and reasons |
-| POST | `/ask` | `{"question": "..."}` → answer and citations |
+| POST | `/ask` | Takes `{"question": "..."}`, returns an answer and citations |
 | GET | `/fleet/availability?day=YYYY-MM-DD` | Free courtesy cars |
-| POST | `/agent` | `{"message": "..."}` → reply and the tools the agent used |
+| POST | `/agent` | Takes `{"message": "..."}`, returns a reply and the tools used |
 
 ## Quality
 
-- **51 tests** with pytest covering lookup, chunking, retrieval, the model, the agent, the API and the CLI. HTTP calls to DVSA, OpenAI and Anthropic are tested with `httpx.MockTransport`, so no network or keys are needed.
+- **54 tests** with pytest covering lookup, chunking, retrieval, the model, the agent, the API and the CLI. HTTP calls to DVSA, OpenAI and Anthropic are tested with `httpx.MockTransport`, so no network or keys are needed.
 - **Retrieval is measured, not eyeballed.** `garage-copilot eval` runs 18 labelled questions and reports hit@1, hit@3 and MRR. Current results: hit@1 0.94, hit@3 1.00, MRR 0.97. A test fails the build if retrieval quality drops.
 - **Model check.** The risk model reaches a ROC AUC of about 0.81 on held-out synthetic data, with a fail rate of about 30%, close to the real UK first-attempt figure. A test also checks that older, high-mileage cars with advisories score higher than new ones.
 - **CI** on GitHub Actions: ruff lint and format checks, tests on Python 3.11 and 3.12, the retrieval eval, then a Docker build with a smoke test against the running container.
+
+## Security
+
+- Secrets only come from environment variables, are hidden from `Settings` repr and are never committed (`.env` is git-ignored).
+- Set `GARAGE_API_KEY` to require an `X-API-Key` header on every endpoint. Keys are compared in constant time.
+- Registrations are validated and cleaned before they reach any external URL. Request bodies have length limits.
+- Bad tool arguments from an LLM come back to the model as a tool error instead of crashing the request.
+- All outbound HTTP calls have timeouts. The Docker image runs as a non-root user.
+- The model file is loaded with joblib (pickle), so only load model files you trained yourself.
 
 ## Project layout
 

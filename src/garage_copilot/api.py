@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import secrets
 from datetime import date
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from garage_copilot import __version__
 from garage_copilot.core import Copilot
 from garage_copilot.vehicles.lookup import VehicleNotFoundError
+from garage_copilot.vehicles.models import Vehicle
 
 
 class AskRequest(BaseModel):
@@ -46,18 +48,25 @@ class RiskOut(BaseModel):
 
 
 def create_app(copilot: Copilot | None = None) -> FastAPI:
-    app = FastAPI(
-        title="Garage Copilot",
-        version=__version__,
-        description="Vehicle lookup, workshop knowledge RAG, MOT risk prediction and a "
-        "tool-using agent for garages and fleet operators.",
-    )
     state: dict[str, Copilot] = {}
 
     def cp() -> Copilot:
         if "copilot" not in state:
             state["copilot"] = copilot or Copilot.build()
         return state["copilot"]
+
+    def require_key(x_api_key: str | None = Header(default=None)) -> None:
+        expected = cp().settings.api_key
+        if expected and not secrets.compare_digest(x_api_key or "", expected):
+            raise HTTPException(401, "Missing or invalid X-API-Key")
+
+    app = FastAPI(
+        title="Garage Copilot",
+        version=__version__,
+        description="Vehicle lookup, workshop knowledge RAG, MOT risk prediction and a "
+        "tool-using agent for garages and fleet operators.",
+        dependencies=[Depends(require_key)],
+    )
 
     @app.get("/health")
     def health() -> dict[str, Any]:
@@ -71,22 +80,23 @@ def create_app(copilot: Copilot | None = None) -> FastAPI:
             "model_auc": c.risk_model.metrics.get("roc_auc"),
         }
 
-    @app.get("/vehicles/{registration}")
-    def vehicle(registration: str) -> dict[str, Any]:
+    def get_vehicle(registration: str) -> Vehicle:
         try:
-            v = cp().lookup.get(registration)
+            return cp().lookup.get(registration)
         except VehicleNotFoundError as exc:
             raise HTTPException(404, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.get("/vehicles/{registration}")
+    def vehicle(registration: str) -> dict[str, Any]:
+        v = get_vehicle(registration)
         return {**v.model_dump(), "mot_due": v.mot_due()}
 
     @app.get("/vehicles/{registration}/mot-risk", response_model=RiskOut)
     def mot_risk(registration: str) -> RiskOut:
-        c = cp()
-        try:
-            v = c.lookup.get(registration)
-        except VehicleNotFoundError as exc:
-            raise HTTPException(404, str(exc)) from exc
-        s = c.risk_model.score(v)
+        v = get_vehicle(registration)
+        s = cp().risk_model.score(v)
         return RiskOut(
             registration=v.registration,
             probability=s.probability,

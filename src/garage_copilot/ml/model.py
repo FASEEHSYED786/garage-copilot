@@ -93,6 +93,7 @@ class MotRiskModel:
 
     @classmethod
     def load(cls, path: Path) -> MotRiskModel:
+        # joblib uses pickle: only load model files you created yourself.
         payload = joblib.load(path)
         model = cls(payload["pipeline"])
         model.metrics = payload.get("metrics", {})
