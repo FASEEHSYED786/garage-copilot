@@ -74,6 +74,8 @@ def create_app(copilot: Copilot | None = None) -> FastAPI:
         return {
             "status": "ok",
             "version": __version__,
+            "preset": c.preset.name,
+            "tools": c.tools.names,
             "llm": c.settings.llm_provider,
             "vehicle_source": c.settings.vehicle_source,
             "knowledge_chunks": len(c.rag.store),

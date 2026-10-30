@@ -99,7 +99,7 @@ class RuleBasedAgent:
                 f"MOT due {v['mot_due']:%d %b %Y}."
             )
 
-            if wants_risk:
+            if wants_risk and "mot_risk" in self.tools:
                 risk = self.tools.call("mot_risk", registration=reg)
                 steps.append(risk)
                 r = risk.output
@@ -108,7 +108,7 @@ class RuleBasedAgent:
                 if r["recommend_pre_mot_check"]:
                     lines.append("I'd recommend our 20-minute pre-MOT check.")
 
-        if wants_booking:
+        if wants_booking and "book_job" in self.tools:
             if not reg:
                 return AgentResponse("Which registration should I book in?", steps)
             day = parse_day(message, self.today())
@@ -132,7 +132,7 @@ class RuleBasedAgent:
                 lines.extend(b["notes"])
             else:
                 lines.append(f"Couldn't book: {booking.output['error']}")
-        elif wants_courtesy:
+        elif wants_courtesy and "check_courtesy_cars" in self.tools:
             day = parse_day(message, self.today())
             if day.weekday() >= 5:
                 lines.append(
@@ -144,7 +144,7 @@ class RuleBasedAgent:
             free = cars.output["available"]
             lines.append(f"Free courtesy cars on {day:%a %d %b}: {', '.join(free) or 'none'}.")
 
-        if is_question and not wants_booking:
+        if is_question and not wants_booking and "search_knowledge" in self.tools:
             knowledge = self.tools.call("search_knowledge", question=message)
             steps.append(knowledge)
             k = knowledge.output

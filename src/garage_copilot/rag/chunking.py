@@ -74,9 +74,13 @@ def chunk_document(doc: Document, max_chars: int = 900) -> list[Chunk]:
     return chunks
 
 
-def load_directory(directory: Path, max_chars: int = 900) -> list[Chunk]:
+def load_directory(
+    directory: Path, max_chars: int = 900, only: tuple[str, ...] | None = None
+) -> list[Chunk]:
     chunks: list[Chunk] = []
     for path in sorted(Path(directory).glob("*.md")):
+        if only is not None and path.stem not in only:
+            continue
         chunks.extend(chunk_document(load_document(path), max_chars=max_chars))
     return chunks
 

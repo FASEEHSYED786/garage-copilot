@@ -12,6 +12,7 @@ from garage_copilot.config import Settings
 from garage_copilot.fleet import FleetService
 from garage_copilot.llm import build_llm
 from garage_copilot.ml.model import MotRiskModel
+from garage_copilot.presets import Preset, get_preset
 from garage_copilot.rag.assistant import RagAssistant
 from garage_copilot.vehicles.lookup import DvsaMotHistoryClient, MockVehicleLookup, VehicleLookup
 
@@ -19,6 +20,7 @@ from garage_copilot.vehicles.lookup import DvsaMotHistoryClient, MockVehicleLook
 @dataclass
 class Copilot:
     settings: Settings
+    preset: Preset
     lookup: VehicleLookup
     rag: RagAssistant
     risk_model: MotRiskModel
@@ -34,11 +36,14 @@ class Copilot:
         risk_model: MotRiskModel | None = None,
     ) -> Copilot:
         settings = settings or Settings.from_env()
+        preset = get_preset(settings.preset)
         lookup = _build_lookup(settings)
-        rag = RagAssistant.from_directory(settings.knowledge_dir, llm=build_llm(settings))
+        rag = RagAssistant.from_directory(
+            settings.knowledge_dir, llm=build_llm(settings), only=preset.knowledge
+        )
         model = risk_model or MotRiskModel.load_or_train(settings.model_path)
         fleet = FleetService.with_sample_fleet()
-        tools = build_tools(lookup, model, rag, fleet, today=today)
+        tools = build_tools(lookup, model, rag, fleet, today=today).subset(preset.tools)
         agent: RuleBasedAgent | OpenAIToolAgent
         if settings.llm_provider == "openai" and settings.openai_api_key:
             agent = OpenAIToolAgent(
@@ -46,7 +51,7 @@ class Copilot:
             )
         else:
             agent = RuleBasedAgent(tools, today=today)
-        return cls(settings, lookup, rag, model, fleet, tools, agent)
+        return cls(settings, preset, lookup, rag, model, fleet, tools, agent)
 
 
 def _build_lookup(settings: Settings) -> VehicleLookup:

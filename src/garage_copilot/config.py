@@ -16,6 +16,7 @@ DATA_DIR = PACKAGE_DIR / "data"
 
 @dataclass(frozen=True)
 class Settings:
+    preset: str = "garage"
     llm_provider: str = "offline"  # offline | openai | anthropic
     llm_model: str | None = None
     openai_api_key: str | None = field(default=None, repr=False)
@@ -35,6 +36,7 @@ class Settings:
     def from_env(cls) -> Settings:
         env = os.environ
         return cls(
+            preset=env.get("GARAGE_PRESET", "garage").lower(),
             llm_provider=env.get("GARAGE_LLM_PROVIDER", "offline").lower(),
             llm_model=env.get("GARAGE_LLM_MODEL"),
             openai_api_key=env.get("OPENAI_API_KEY"),

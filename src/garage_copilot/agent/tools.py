@@ -55,6 +55,9 @@ class ToolRegistry:
     def names(self) -> list[str]:
         return list(self._tools)
 
+    def subset(self, names: tuple[str, ...]) -> ToolRegistry:
+        return ToolRegistry([t for n, t in self._tools.items() if n in names])
+
     def schemas(self) -> list[dict[str, Any]]:
         return [t.schema() for t in self._tools.values()]
 

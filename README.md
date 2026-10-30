@@ -34,6 +34,17 @@ It is a personal project. All vehicles, policies and data in the repo are made u
 | **Agent** | One tool registry with JSON schemas, used by a deterministic rule-based planner (offline) or by an LLM through OpenAI function calling |
 | **API and CLI** | FastAPI service with typed request and response models, plus a `garage-copilot` command |
 
+## Reusable components
+
+The project is built from parts that can be lifted into other projects or extended without touching the core:
+
+- **`rag/`** has no garage logic. Chunking, embeddings, the vector store and the retrieval eval work on any folder of markdown.
+- **`ToolRegistry`** holds tools as functions with JSON schemas. The same tools drive a rule-based planner or an LLM, and `subset()` limits what each deployment can do.
+- **Presets** configure the copilot per business type (`garage`, `audio_fitter`, `fleet_hire`), choosing which documents are indexed and which tools are on. A new business type is a config entry, not new code.
+- **Adapters** sit behind small interfaces (`VehicleLookup`, `Embedder`, `LLMClient`), so mock data, DVSA, OpenAI or Claude are a settings change.
+
+[docs/extending.md](docs/extending.md) is the playbook for adding a document, a tool, a preset or an adapter.
+
 ## Architecture
 
 ```mermaid
@@ -85,6 +96,7 @@ docker run -p 8000:8000 garage-copilot
 Copy `.env.example` to `.env` and set what you need:
 
 ```bash
+GARAGE_PRESET=audio_fitter        # garage | audio_fitter | fleet_hire
 GARAGE_LLM_PROVIDER=openai        # or anthropic
 OPENAI_API_KEY=...
 GARAGE_VEHICLE_SOURCE=dvsa
@@ -98,7 +110,7 @@ With `openai` the agent switches to LLM tool calling, and RAG answers are writte
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/health` | Status, provider, number of indexed chunks, model AUC |
+| GET | `/health` | Status, preset, enabled tools, provider, indexed chunks, model AUC |
 | GET | `/vehicles/{registration}` | Vehicle details and MOT history |
 | GET | `/vehicles/{registration}/mot-risk` | Failure probability, band and reasons |
 | POST | `/ask` | Takes `{"question": "..."}`, returns an answer and citations |
@@ -107,7 +119,7 @@ With `openai` the agent switches to LLM tool calling, and RAG answers are writte
 
 ## Quality
 
-- **54 tests** with pytest covering lookup, chunking, retrieval, the model, the agent, the API and the CLI. HTTP calls to DVSA, OpenAI and Anthropic are tested with `httpx.MockTransport`, so no network or keys are needed.
+- **60 tests** with pytest covering lookup, chunking, retrieval, the model, the agent, the API and the CLI. HTTP calls to DVSA, OpenAI and Anthropic are tested with `httpx.MockTransport`, so no network or keys are needed.
 - **Retrieval is measured, not eyeballed.** `garage-copilot eval` runs 18 labelled questions and reports hit@1, hit@3 and MRR. Current results: hit@1 0.94, hit@3 1.00, MRR 0.97. A test fails the build if retrieval quality drops.
 - **Model check.** The risk model reaches a ROC AUC of about 0.81 on held-out synthetic data, with a fail rate of about 30%, close to the real UK first-attempt figure. A test also checks that older, high-mileage cars with advisories score higher than new ones.
 - **CI** on GitHub Actions: ruff lint and format checks, tests on Python 3.11 and 3.12, the retrieval eval, then a Docker build with a smoke test against the running container.
@@ -129,6 +141,7 @@ src/garage_copilot/
   rag/        chunking, embeddings, vector store, assistant, evaluation
   ml/         synthetic dataset, features, risk model
   agent/      tool registry, rule-based and OpenAI tool-calling agents
+  presets.py  per-business configuration (documents and tools)
   fleet.py    bookings and courtesy cars
   llm.py      OpenAI and Anthropic clients over plain HTTP
   core.py     wiring: picks adapters from settings
@@ -136,6 +149,7 @@ src/garage_copilot/
   cli.py      command line
   data/       sample vehicles, workshop docs, eval questions
 tests/
+docs/         extending playbook
 ```
 
 ## Design decisions

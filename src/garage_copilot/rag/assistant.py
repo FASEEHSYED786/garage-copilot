@@ -97,10 +97,14 @@ class RagAssistant:
 
     @classmethod
     def from_directory(
-        cls, directory: Path, llm: LLMClient | None = None, embedder: Embedder | None = None
+        cls,
+        directory: Path,
+        llm: LLMClient | None = None,
+        embedder: Embedder | None = None,
+        only: tuple[str, ...] | None = None,
     ) -> RagAssistant:
         store = VectorStore(embedder or TfidfEmbedder())
-        store.index(load_directory(directory))
+        store.index(load_directory(directory, only=only))
         return cls(store, llm)
 
     def ask(self, question: str) -> Answer:
