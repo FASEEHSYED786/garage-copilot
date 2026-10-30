@@ -1,0 +1,8 @@
+.git
+.venv
+.garage_copilot
+**/__pycache__
+.pytest_cache
+.ruff_cache
+.coverage
+tests
